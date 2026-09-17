@@ -1,7 +1,6 @@
 import os
 import sys
 import streamlit as st
-import pyperclip
 
 st.set_page_config(
     page_title="Pokemon Go Search Builder",
@@ -123,19 +122,10 @@ def undo_last():
     if st.session_state.search_query:
         st.session_state.search_query = st.session_state.search_query[:-1]
 
-def copy_to_clipboard():
-    """Copies current search query to system clipboard using pyperclip."""
-    if st.session_state.search_query:
-        pyperclip.copy(st.session_state.search_query)
-        st.toast("Copied to clipboard!", icon="📋")
-    else:
-        st.toast("Search string is empty!", icon="⚠️")
-
 def quit_app():
-    """Stops Streamlit script runner and terminates Python backend process."""
-    st.toast("Shutting down application...")
+    """Stops Streamlit script runner cleanly in cloud environments."""
+    st.toast("Shutting down session...")
     st.stop()
-    os._exit(0)
 
 # --- Sidebar for App Controls ---
 with st.sidebar:
@@ -160,22 +150,17 @@ with st.container():
         placeholder="Tap options below or edit string directly..."
     )
 
-    # Action Row: Copy, Clear, and Undo
-    col_copy, col_clear, col_undo = st.columns([2, 1, 1])
-
-    with col_copy:
-        st.button(
-            "Copy to Clipboard", 
-            on_click=copy_to_clipboard, 
-            type="primary", 
-            use_container_width=True, 
-            key="btn_copy_pyperclip"
-        )
+    # Action Row: Clear and Undo
+    col_clear, col_undo = st.columns(2)
 
     with col_clear:
         st.button("Clear", on_click=clear_all, use_container_width=True, key="btn_clear_main")
     with col_undo:
         st.button("Undo", on_click=undo_last, use_container_width=True, key="btn_undo_main")
+
+    # Native Web-Safe Clipboard Block
+    st.caption("📋 **Tap/Hover below to copy string to clipboard:**")
+    st.code(st.session_state.search_query if st.session_state.search_query else "Your generated search string will appear here...", language=None)
 
 st.markdown("---")
 
