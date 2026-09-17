@@ -1,6 +1,7 @@
 import os
 import sys
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Pokemon Go Search Builder",
@@ -8,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for dark mode styling, thicker buttons & sticky top header
+# Custom CSS for dark mode styling, fixed sticky header positioning below Streamlit UI, & touch optimization
 st.markdown("""
 <style>
     /* Dark theme alignment for text input fields */
@@ -17,6 +18,9 @@ st.markdown("""
         color: #ffffff !important;
         border: 1px solid #3a3f4d !important;
         border-radius: 8px !important;
+        padding: 0.35rem 0.6rem !important;
+        height: 2.3rem !important;
+        font-size: 0.95rem !important;
     }
     
     .stTextInput input:focus {
@@ -24,41 +28,36 @@ st.markdown("""
         box-shadow: 0 0 0 1px #ff4b4b !important;
     }
 
-    .stTextInput label {
-        color: #e0e0e0 !important;
-    }
-
-    /* Thicker, touch-friendly buttons */
+    /* Thicker, touch-friendly buttons for app categories */
     .stButton > button {
-        min-height: 3.5rem !important;
-        font-size: 1.05rem !important;
+        min-height: 2.8rem !important;
+        font-size: 0.95rem !important;
         font-weight: 600 !important;
-        padding: 0.6rem 1rem !important;
-        margin-bottom: 0.35rem !important;
-        border-radius: 10px !important;
+        padding: 0.4rem 0.6rem !important;
+        margin-bottom: 0.2rem !important;
+        border-radius: 8px !important;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
         transition: all 0.15s ease-in-out !important;
     }
 
-    /* Hover effect */
     .stButton > button:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
     }
     
-    /* Make the entire sticky-header container stick to the top on scroll */
+    /* Sticky Header Positioning Offset to avoid Streamlit navbar overlay */
     div[data-testid="stVerticalBlock"] > div:has(div.sticky-header-marker) {
         position: sticky;
-        top: 2.8rem;
+        top: 3.75rem; /* Offsets container below Streamlit's native header */
         background-color: var(--background-color, #0e1117);
-        z-index: 999;
+        z-index: 100;
         padding-top: 0.5rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.15);
     }
 
     div[data-testid="stExpander"] div[data-testid="stVerticalBlock"] {
-        gap: 0.6rem;
+        gap: 0.4rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -76,7 +75,6 @@ OPERATORS = [
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
 
-# Set tracking active toggled operators
 if "active_operators" not in st.session_state:
     st.session_state.active_operators = set()
 
@@ -91,7 +89,6 @@ for key, default in [
 def add_term(term):
     """Appends selected term followed by all active toggled operators in ordered sequence."""
     if term:
-        # Build operator suffix preserving standard defined order (&, ,, !, +, -)
         suffix = "".join([val for _, val in OPERATORS if val in st.session_state.active_operators])
         st.session_state.search_query += f"{term}{suffix}"
 
@@ -100,7 +97,6 @@ def add_iv_stat(stat_type):
     min_val = st.session_state.min_iv
     max_val = st.session_state.max_iv
     
-    # If values are equal, use single number (e.g. 4attack), otherwise range (0-3attack)
     if min_val == max_val:
         iv_term = f"{min_val}{stat_type}"
     else:
@@ -123,7 +119,6 @@ def undo_last():
         st.session_state.search_query = st.session_state.search_query[:-1]
 
 def quit_app():
-    """Stops Streamlit script runner cleanly in cloud environments."""
     st.toast("Shutting down session...")
     st.stop()
 
@@ -132,35 +127,70 @@ with st.sidebar:
     st.header("App Controls")
     st.button("Quit App", on_click=quit_app, use_container_width=True, key="btn_quit_sidebar")
 
-# --- App Title Row ---
-col_title, col_quit = st.columns([3, 1])
-with col_title:
-    st.title("Pokemon Go Search Builder")
-with col_quit:
-    st.button("Quit App", on_click=quit_app, use_container_width=True, key="btn_quit_main")
+# --- Title Header ---
+st.title("Pokemon Go Search Builder")
 
-# --- Sticky Top Container (Search String + Actions) ---
+# --- Sticky Active Search Bar Container ---
 with st.container():
     st.markdown('<div class="sticky-header-marker"></div>', unsafe_allow_html=True)
 
-    # Active Search String Box (Styled for Dark Theme)
+    # Active Search String Display
     st.text_input(
         "Active Search String",
         key="search_query",
-        placeholder="Tap options below or edit string directly..."
+        placeholder="Tap options below...",
+        label_visibility="collapsed"
     )
 
-    # Action Row: Clear and Undo
-    col_clear, col_undo = st.columns(2)
+    # Controls Bar: JS Copy, Clear, Undo
+    col_copy_btn, col_clear, col_undo = st.columns([2, 1, 1])
+
+    with col_copy_btn:
+        # Browser-native JavaScript Clipboard Copy Button
+        escaped_query = st.session_state.search_query.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"')
+        js_code = f"""
+        <button id="copyBtn" onclick="copyToClipboard()" style="
+            width: 100%;
+            height: 2.3rem;
+            background-color: #ff4b4b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: background-color 0.2s;
+        ">Copy String</button>
+
+        <script>
+        function copyToClipboard() {{
+            const textToCopy = '{escaped_query}';
+            const btn = document.getElementById('copyBtn');
+            if (!textToCopy) {{
+                btn.innerText = 'Empty String';
+                setTimeout(() => {{ btn.innerText = 'Copy String'; }}, 1500);
+                return;
+            }}
+            navigator.clipboard.writeText(textToCopy).then(() => {{
+                btn.innerText = 'Copied';
+                btn.style.backgroundColor = '#28a745';
+                setTimeout(() => {{ 
+                    btn.innerText = 'Copy String'; 
+                    btn.style.backgroundColor = '#ff4b4b';
+                }}, 1800);
+            }}).catch(err => {{
+                btn.innerText = 'Failed';
+            }});
+        }}
+        </script>
+        """
+        components.html(js_code, height=45)
 
     with col_clear:
         st.button("Clear", on_click=clear_all, use_container_width=True, key="btn_clear_main")
     with col_undo:
         st.button("Undo", on_click=undo_last, use_container_width=True, key="btn_undo_main")
-
-    # Native Web-Safe Clipboard Block
-    st.caption("**Tap/Hover below to copy string to clipboard:**")
-    st.code(st.session_state.search_query if st.session_state.search_query else "Your generated search string will appear here...", language=None)
 
 st.markdown("---")
 
@@ -172,10 +202,9 @@ for i, (label, val) in enumerate(OPERATORS):
     with cols_ops[i % 3]:
         is_toggled = val in st.session_state.active_operators
         btn_type = "primary" if is_toggled else "secondary"
-        display_label = f"✓ {label}" if is_toggled else label
         
         st.button(
-            display_label, 
+            label, 
             on_click=toggle_operator, 
             args=(val,), 
             type=btn_type,
@@ -183,7 +212,7 @@ for i, (label, val) in enumerate(OPERATORS):
             key=f"btn_op_{val}"
         )
 
-# --- Touch-Friendly Button Grid Helper ---
+# --- Button Grid Helper ---
 def render_button_grid(item_dict_or_list, category_prefix, columns_count=2, prefix="", suffix="", is_dict=False):
     cols = st.columns(columns_count)
     if is_dict:
