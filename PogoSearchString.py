@@ -159,7 +159,7 @@ with st.container():
         st.button("Undo", on_click=undo_last, use_container_width=True, key="btn_undo_main")
 
     # Native Web-Safe Clipboard Block
-    st.caption("📋 **Tap/Hover below to copy string to clipboard:**")
+    st.caption("**Tap/Hover below to copy string to clipboard:**")
     st.code(st.session_state.search_query if st.session_state.search_query else "Your generated search string will appear here...", language=None)
 
 st.markdown("---")
